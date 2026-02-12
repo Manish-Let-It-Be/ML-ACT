@@ -221,7 +221,7 @@ I appreciate everyone who provides feedback and suggestions to improve this fram
 
 **Manish** - [GitHub Profile](https://github.com/Manish-Let-It-Be)
 
-Project Link: [https://github.com/Manish-Let-It-Be/Algorithm-Comparer](https://github.com/Manish-Let-It-Be/Algorithm-Comparer)
+Project Link: [https://github.com/Manish-Let-It-Be/Algorithm-Comparer](https://mlalgoct.streamlit.app/)
 
 ---
 
