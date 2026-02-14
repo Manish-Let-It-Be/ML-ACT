@@ -36,10 +36,10 @@ st.markdown("""
 <style>
 
 :root {
-    --bg: #f8f9fb;
+    --bg: #ffffff;
     --card-bg: #ffffff;
-    --text-primary: #111827;
-    --text-secondary: #6b7280;
+    --text-primary: #000000;
+    --text-secondary: #333333;
     --accent: #2563eb;
     --border: #e5e7eb;
 }
@@ -81,7 +81,7 @@ html, body, [class*="css"] {
 .hero-title {
     font-size: 3rem;
     font-weight: 700;
-    color: var(--text-primary) !important;
+    color: #3b82f6 !important; /* Fixed brand color for both themes */
     margin-bottom: 1rem;
 }
 
@@ -95,7 +95,7 @@ html, body, [class*="css"] {
 .section-title {
     font-size: 1.8rem;
     font-weight: 600;
-    color: var(--text-primary) !important;
+    color: #3b82f6 !important; /* Fixed brand color for both themes */
     margin-bottom: 2rem;
 }
 
@@ -109,7 +109,8 @@ html, body, [class*="css"] {
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 2rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
     transition: all 0.2s ease;
     height: 100%;
 }
@@ -177,6 +178,33 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
+import streamlit.components.v1 as components
+
+def open_sidebar():
+    js = """
+    <script>
+        function openSidebar() {
+            var sidebar = window.parent.document.querySelector('[data-testid="stSidebar"]');
+            var button = window.parent.document.querySelector('[data-testid="stSidebarCollapsedControl"]');
+            
+            // Check if sidebar is collapsed (aria-expanded is false or sidebar width is small)
+            if (sidebar && sidebar.getAttribute('aria-expanded') === 'false') {
+                if (button) {
+                    button.click();
+                }
+            } else if (!sidebar && button) {
+                // If sidebar element is not found/visible, it might be collapsed entirely
+                button.click();
+            }
+        }
+        // Run with a slight delay to ensure DOM is ready
+        setTimeout(openSidebar, 100);
+        setTimeout(openSidebar, 500); 
+    </script>
+    """
+    components.html(js, height=0)
+
+
 
 if "results" not in st.session_state:
     st.session_state.results = {}
@@ -188,6 +216,8 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "show_landing" not in st.session_state:
     st.session_state.show_landing = True
+if "open_sidebar" not in st.session_state:
+    st.session_state.open_sidebar = False
 
 
 def render_sidebar():
@@ -315,6 +345,13 @@ def render_sidebar():
                             hidden = (100,)
                         max_iter = st.slider("max_iter", 100, 2000, 1000, 100, key="mlp_iter")
                         hyperparams[algo] = {"hidden_layer_sizes": hidden, "max_iter": max_iter}
+
+            if st.button("Train Models", key="sidebar_train_btn", use_container_width=True, type="primary"):
+                st.session_state.train_requested = True
+            
+            if st.session_state.get("show_train_notification", False):
+                st.info("Go to Train & Compare Tab to see results")
+                st.session_state.show_train_notification = False
 
             return {
                 "df": df,
@@ -444,6 +481,29 @@ def train_models(X, y, config):
     progress_bar.empty()
 
     return results, X_train, X_test, y_train, y_test
+
+
+def perform_training_pipeline(df, target_col, sidebar_config):
+    X, y = preprocess_data(df, target_col, sidebar_config)
+    feature_names = list(X.columns) if hasattr(X, 'columns') else [f"Feature_{i}" for i in range(X.shape[1])]
+
+    results, X_train, X_test, y_train, y_test = train_models(X, y, sidebar_config)
+
+    st.session_state.results = results
+    st.session_state.feature_names = feature_names
+    st.session_state.X_train = X_train
+    st.session_state.X_test = X_test
+    st.session_state.y_train = y_train
+    st.session_state.y_test = y_test
+    st.session_state.dataset_info_str = format_dataset_info(get_dataset_info(df, sidebar_config["dataset_name"]))
+
+    history_entry = {
+        "dataset": sidebar_config["dataset_name"],
+        "task": sidebar_config["task_type"],
+        "algorithms": list(results.keys()),
+        "metrics": {n: d.get("metrics", {}) for n, d in results.items()},
+    }
+    st.session_state.history.append(history_entry)
 
 
 def render_results(results, config, X_train, X_test, y_train, y_test, feature_names):
@@ -836,6 +896,7 @@ def render_landing_page():
         st.markdown('<div class="primary-btn">', unsafe_allow_html=True)
         if st.button("Get Started", use_container_width=True):
             st.session_state.show_landing = False
+            st.session_state.open_sidebar = True
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -914,6 +975,10 @@ def render_footer():
 
 
 def main():
+    if st.session_state.get("open_sidebar", False):
+        open_sidebar()
+        st.session_state.open_sidebar = False
+
     if st.session_state.show_landing:
         render_landing_page()
         render_footer()
@@ -932,6 +997,13 @@ def main():
 
     df = sidebar_config["df"]
     target_col = sidebar_config["target_col"]
+
+    # Handle sidebar training trigger
+    if st.session_state.get("train_requested", False):
+        perform_training_pipeline(df, target_col, sidebar_config)
+        st.session_state.train_requested = False
+        st.session_state.show_train_notification = True
+        st.rerun()
 
     main_tabs = st.tabs(["Data Explorer", "Train & Compare", "AI Analysis", "ML Theory"])
 
@@ -970,26 +1042,7 @@ def main():
                         f"**Test Split:** {sidebar_config['test_size']}")
 
             if st.button("Train All Models", type="primary", width='stretch'):
-                X, y = preprocess_data(df, target_col, sidebar_config)
-                feature_names = list(X.columns) if hasattr(X, 'columns') else [f"Feature_{i}" for i in range(X.shape[1])]
-
-                results, X_train, X_test, y_train, y_test = train_models(X, y, sidebar_config)
-
-                st.session_state.results = results
-                st.session_state.feature_names = feature_names
-                st.session_state.X_train = X_train
-                st.session_state.X_test = X_test
-                st.session_state.y_train = y_train
-                st.session_state.y_test = y_test
-                st.session_state.dataset_info_str = format_dataset_info(info)
-
-                history_entry = {
-                    "dataset": sidebar_config["dataset_name"],
-                    "task": sidebar_config["task_type"],
-                    "algorithms": list(results.keys()),
-                    "metrics": {n: d.get("metrics", {}) for n, d in results.items()},
-                }
-                st.session_state.history.append(history_entry)
+                perform_training_pipeline(df, target_col, sidebar_config)
 
             if st.session_state.results:
                 render_results(
