@@ -1,11 +1,12 @@
-<h1 align="center">ML Comparison Framework 🧪</h1>
+<h1 align="center">ML Comparison Framework</h1>
 
+> 🌐 Live Demo: [MLACT](https://mlalgoct.streamlit.app/)
+> 
 <p align="center">
 <a href="#">
     <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python Version">
     <img src="https://img.shields.io/badge/Streamlit-1.54+-red.svg" alt="Streamlit">
     <img src="https://img.shields.io/badge/scikit--learn-1.8+-orange.svg" alt="scikit-learn">
-    <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
 </a>
 </p>
 
