@@ -113,7 +113,7 @@ This is a **Machine Learning Comparison Framework** built with **Streamlit, scik
 
 ### **1. Clone the Repository**  
 ```sh
-git clone https://github.com/Manish-Let-It-Be/Algorithm-Comparer.git
+git clone https://github.com/Manish-Let-It-Be/ML-ACT.git
 cd Algorithm-Comparer/Algorithm-Comparer
 ```
 
